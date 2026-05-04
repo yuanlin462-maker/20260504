@@ -1,7 +1,14 @@
 let capture;
 let faceMesh;
 let faces = [];
-const lipIndices = [409, 270, 269, 267, 0, 37, 39, 40, 185, 61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291];
+// 定義右眼的外圈與內圈編號
+const rightEyeOuter = [130, 247, 30, 29, 27, 28, 56, 190, 243, 112, 26, 22, 23, 24, 110, 25];
+const rightEyeInner = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7];
+// 定義左眼的外圈與內圈編號
+const leftEyeOuter = [359, 467, 260, 259, 257, 258, 286, 414, 463, 341, 256, 252, 253, 254, 339, 255];
+const leftEyeInner = [263, 466, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390, 249];
+// 定義臉部最外層輪廓（剪影）編號
+const faceSilhouette = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -38,25 +45,23 @@ function draw() {
     let keypoints = faces[0].keypoints;
     
     stroke(255, 0, 0); // 線條採用紅色
-    strokeWeight(15); // 線條粗細為 15
+    strokeWeight(2);   // 稍微增加一點粗細，讓眼睛輪廓更清晰
     noFill();
 
-    // 利用 line 指令串接所有編號
-    for (let i = 0; i < lipIndices.length; i++) {
-      // 取得當前點與下一個點（最後一個點會連回第一個點）
-      let p1 = keypoints[lipIndices[i]];
-      let p2 = keypoints[lipIndices[(i + 1) % lipIndices.length]];
+    // 繪製外圈 (247)
+    drawContour(keypoints, rightEyeOuter, vW, vH);
+    
+    // 繪製內圈 (246)
+    drawContour(keypoints, rightEyeInner, vW, vH);
 
-      if (p1 && p2) {
-        // 將座標從原始影片解析度映射到畫布上的置中影像範圍
-        let x1 = map(p1.x, 0, capture.elt.videoWidth, -vW / 2, vW / 2);
-        let y1 = map(p1.y, 0, capture.elt.videoHeight, -vH / 2, vH / 2);
-        let x2 = map(p2.x, 0, capture.elt.videoWidth, -vW / 2, vW / 2);
-        let y2 = map(p2.y, 0, capture.elt.videoHeight, -vH / 2, vH / 2);
-        
-        line(x1, y1, x2, y2);
-      }
-    }
+    // 繪製左眼外圈 (467)
+    drawContour(keypoints, leftEyeOuter, vW, vH);
+
+    // 繪製左眼內圈 (466)
+    drawContour(keypoints, leftEyeInner, vW, vH);
+
+    // 繪製臉部最外層輪廓
+    drawContour(keypoints, faceSilhouette, vW, vH);
   }
   pop();
   
@@ -65,6 +70,22 @@ function draw() {
   noStroke();
   textSize(16);
   text("Faces detected: " + faces.length, 20, 30);
+}
+
+// 輔助函式：利用 line 指令串接指定的特徵點陣列
+function drawContour(points, indices, vW, vH) {
+  for (let i = 0; i < indices.length; i++) {
+    let p1 = points[indices[i]];
+    let p2 = points[indices[(i + 1) % indices.length]];
+
+    if (p1 && p2) {
+      let x1 = map(p1.x, 0, capture.elt.videoWidth, -vW / 2, vW / 2);
+      let y1 = map(p1.y, 0, capture.elt.videoHeight, -vH / 2, vH / 2);
+      let x2 = map(p2.x, 0, capture.elt.videoWidth, -vW / 2, vW / 2);
+      let y2 = map(p2.y, 0, capture.elt.videoHeight, -vH / 2, vH / 2);
+      line(x1, y1, x2, y2);
+    }
+  }
 }
 
 function gotFaces(results) {
