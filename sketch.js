@@ -1,6 +1,9 @@
 let capture;
 let faceMesh;
 let faces = [];
+let isModelReady = false;
+// 唇部連線編號
+const lipIndices = [76, 77, 90, 180, 85, 16, 315, 404, 320, 307, 306, 408, 304, 303, 302, 11, 72, 73, 74, 184];
 // 定義右眼的外圈與內圈編號
 const rightEyeOuter = [130, 247, 30, 29, 27, 28, 56, 190, 243, 112, 26, 22, 23, 24, 110, 25];
 const rightEyeInner = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7];
@@ -21,7 +24,10 @@ function setup() {
   capture.hide(); // 隱藏預設產生的 HTML video 元件
 
   // 初始化 ml5.js FaceMesh
-  faceMesh = ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipHorizontal: false });
+  faceMesh = ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipHorizontal: false }, () => {
+    console.log("Model Loaded!");
+    isModelReady = true;
+  });
   faceMesh.detectStart(capture, gotFaces);
 }
 
@@ -29,10 +35,12 @@ function draw() {
   background('#e7c6ff');
 
   // 確保攝影機已準備好且有影像尺寸資料
-  if (!capture.elt || capture.elt.videoWidth === 0) return;
+  if (!capture.elt || capture.elt.videoWidth === 0) {
+    return;
+  }
 
-  let vW = windowWidth * 0.5; // 寬度為全螢幕的 50%
-  let vH = capture.elt.videoHeight * (vW / capture.elt.videoWidth); // 依比例計算高度
+  let vW = 640; // 使用固定寬度或依比例
+  let vH = capture.elt.videoHeight * (vW / capture.elt.videoWidth);
 
   push();
   translate(width / 2, height / 2); // 移動到畫面中心
@@ -43,11 +51,15 @@ function draw() {
   // 繪製指定的臉部特徵點線條
   if (faces && faces.length > 0) {
     let keypoints = faces[0].keypoints;
-    
+
     stroke(255, 0, 0); // 線條採用紅色
-    strokeWeight(2);   // 稍微增加一點粗細，讓眼睛輪廓更清晰
+    strokeWeight(1);   // 依要求設為 1
     noFill();
 
+    // 1. 繪製唇部 (你指定的編號)
+    drawContour(keypoints, lipIndices, vW, vH);
+
+    strokeWeight(2); // 眼睛用稍粗一點
     // 繪製外圈 (247)
     drawContour(keypoints, rightEyeOuter, vW, vH);
     
@@ -64,12 +76,18 @@ function draw() {
     drawContour(keypoints, faceSilhouette, vW, vH);
   }
   pop();
-  
-  // 簡單的 Debug 文字（非鏡像）
-  fill(0);
+
+  // 狀態提示
+  fill(255, 0, 0);
   noStroke();
   textSize(16);
-  text("Faces detected: " + faces.length, 20, 30);
+  if (!isModelReady) {
+    text("⌛ 模型載入中，請稍候...", 20, 30);
+  } else if (faces.length === 0) {
+    text("🔍 正在尋找臉部...", 20, 30);
+  } else {
+    text("✅ 偵測成功！臉部數量: " + faces.length, 20, 30);
+  }
 }
 
 // 輔助函式：利用 line 指令串接指定的特徵點陣列
