@@ -1,7 +1,7 @@
 let capture;
 let faceMesh;
 let faces = [];
-let lipIndices = [409, 270, 269, 267, 0, 37, 39, 40, 185, 61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291];
+const lipIndices = [409, 270, 269, 267, 0, 37, 39, 40, 185, 61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -21,11 +21,11 @@ function setup() {
 function draw() {
   background('#e7c6ff');
 
-  // 確保攝影機已經讀取到影像解析度，避免 map 出現 NaN
-  if (!capture.elt || capture.elt.videoWidth === 0) return; 
+  // 確保攝影機已準備好
+  if (capture.width === 0 || capture.height === 0) return;
 
   let vW = windowWidth * 0.5; // 寬度為全螢幕的 50%
-  let vH = capture.elt.videoHeight * (vW / capture.elt.videoWidth); // 依比例計算高度
+  let vH = capture.height * (vW / capture.width); // 依比例計算高度
 
   push();
   translate(width / 2, height / 2); // 移動到畫面中心
@@ -34,29 +34,33 @@ function draw() {
   image(capture, 0, 0, vW, vH);
 
   // 繪製指定的臉部特徵點線條
-  if (faces && faces.length > 0) {
+  if (faces.length > 0) {
     let keypoints = faces[0].keypoints;
+    
+    noFill();
     stroke(255, 0, 0); // 線條採用紅色
     strokeWeight(15); // 線條粗細為 15
-    noFill();
-
-    // 為了讓粗線條銜接更順暢，建議使用 beginShape 
-    // 如果一定要用 line 指令，邏輯如下：
+    
+    beginShape();
     for (let i = 0; i < lipIndices.length; i++) {
-      let p1 = keypoints[lipIndices[i]];
-      let p2 = keypoints[lipIndices[(i + 1) % lipIndices.length]];
-
-      if (p1 && p2) {
-        // 這裡將原始影片解析度(例如 640x480) 映射到我們縮放後的顯示範圍 (-vW/2 到 vW/2)
-        let x1 = map(p1.x, 0, capture.elt.videoWidth, -vW / 2, vW / 2);
-        let y1 = map(p1.y, 0, capture.elt.videoHeight, -vH / 2, vH / 2);
-        let x2 = map(p2.x, 0, capture.elt.videoWidth, -vW / 2, vW / 2);
-        let y2 = map(p2.y, 0, capture.elt.videoHeight, -vH / 2, vH / 2);
-        line(x1, y1, x2, y2);
+      let index = lipIndices[i];
+      let pt = keypoints[index];
+      if (pt) {
+        // 將座標從原始影片大小映射到畫布上的影像大小
+        let x = map(pt.x, 0, capture.width, -vW / 2, vW / 2);
+        let y = map(pt.y, 0, capture.height, -vH / 2, vH / 2);
+        vertex(x, y);
       }
     }
+    endShape(CLOSE); // 閉合線條
   }
   pop();
+  
+  // 簡單的 Debug 文字（非鏡像）
+  fill(0);
+  noStroke();
+  textSize(16);
+  text("Faces detected: " + faces.length, 20, 30);
 }
 
 function gotFaces(results) {
